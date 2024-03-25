@@ -1,0 +1,64 @@
+---
+- name: install web
+  hosts: all
+  become: true
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+        - nginx
+        - mysql-server
+        - php-fpm
+        - php-mysql
+        state: present
+
+    - name: copy template nginx
+      template:
+        src: ./nginx.conf.j2
+        dest: /etc/nginx/sites-available/test.com
+        owner: root
+        group: root
+        mode: 0644
+      notify: 
+        - reload nginx
+
+    - name: delete default link
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: restart nginx
+
+    - name: create link
+      file:
+        src: /etc/nginx/sites-available/test.com
+        dest: /etc/nginx/sites-enabled/test.com
+        state: link
+
+    - name: copy template php
+      template:
+        src: ./info.php.j2
+        dest: /var/www/html/info.php
+        owner: root
+        group: root
+        mode: 0644
+
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+    - name: restart php-fpm
+      service:
+        name: php8.1-fpm
+        state: restarted
+
+    - name: reload nginx
+      service:
+        name: nginx
+        state: reloaded
+
